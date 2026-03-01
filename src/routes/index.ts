@@ -11,14 +11,16 @@ import {
 } from '../controllers/userController';
 import { authMiddleware, requireRoles } from '../middleware/authMiddleware';
 import { upload } from '../middleware/upload';
-import { uploadProfileImage } from '../controllers/uploadController';
+import { uploadProfileImage, uploadTaskAttachment } from '../controllers/uploadController';
 import {
   createTask,
   deleteTask,
   getTask,
   listTasks,
   updateTask,
-  updateTaskStatus
+  updateTaskStatus,
+  addComment,
+  replyToComment
 } from '../controllers/taskController';
 
 const router = Router();
@@ -65,6 +67,7 @@ router.post('/auth/login', loginValidator, login);
 
 router.use(authMiddleware);
 router.post('/uploads/profile', upload.single('file'), uploadProfileImage);
+router.post('/uploads/file', upload.single('file'), uploadTaskAttachment);
 
 router.get('/users', listUsers);
 router.post('/users', requireRoles('admin', 'manager'), signupValidator, createUser);
@@ -78,5 +81,9 @@ router.get('/tasks/:id', getTask);
 router.put('/tasks/:id', taskUpdateValidator, updateTask);
 router.patch('/tasks/:id/status', statusValidator, updateTaskStatus);
 router.delete('/tasks/:id', deleteTask);
+
+// Comments
+router.post('/tasks/:id/comments', addComment);
+router.post('/tasks/:id/comments/:commentId/replies', replyToComment);
 
 export default router;

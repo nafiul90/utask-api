@@ -9,6 +9,21 @@ export interface IAttachment {
   size?: number;
 }
 
+export interface IReply {
+  _id?: Types.ObjectId;
+  author: Types.ObjectId;
+  content: string;
+  createdAt: Date;
+}
+
+export interface IComment {
+  _id?: Types.ObjectId;
+  author: Types.ObjectId;
+  content: string;
+  createdAt: Date;
+  replies: IReply[];
+}
+
 export interface ITask extends Document {
   title: string;
   description?: string;
@@ -18,6 +33,7 @@ export interface ITask extends Document {
   startDate: Date;
   dueDate: Date;
   attachments: IAttachment[];
+  comments: IComment[];
 }
 
 const AttachmentSchema = new Schema<IAttachment>(
@@ -28,6 +44,23 @@ const AttachmentSchema = new Schema<IAttachment>(
     size: Number
   },
   { _id: false }
+);
+
+const ReplySchema = new Schema<IReply>(
+  {
+    author: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    content: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now }
+  }
+);
+
+const CommentSchema = new Schema<IComment>(
+  {
+    author: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    content: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now },
+    replies: [ReplySchema]
+  }
 );
 
 const TaskSchema = new Schema<ITask>(
@@ -47,7 +80,8 @@ const TaskSchema = new Schema<ITask>(
         return date;
       }
     },
-    attachments: { type: [AttachmentSchema], default: [] }
+    attachments: { type: [AttachmentSchema], default: [] },
+    comments: { type: [CommentSchema], default: [] }
   },
   { timestamps: true }
 );
