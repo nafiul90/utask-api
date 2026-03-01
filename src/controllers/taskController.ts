@@ -1,0 +1,137 @@
+import { Request, Response } from 'express';
+import { validationResult } from 'express-validator';
+import { Task, TaskStatus } from '../models/Task';
+import { AuthRequest } from '../middleware/authMiddleware';
+
+const managerRoles = ['admin', 'manager'];
+const allowedTransitions: Record<TaskStatus, TaskStatus[]> = {
+  pending: ['processing', 'canceled'],
+  processing: ['qa', 'canceled'],
+  qa: ['processing', 'completed', 'canceled'],
+  completed: ['qa', 'processing', 'canceled'],
+  canceled: []
+};
+
+const canManage = (role?: string | null) => !!role && managerRoles.includes(role);
+
+export const listTasks = async (req: AuthRequest, res: Response) => {
+  const requester = req.user!;
+  const filter = canManage(requester.role) ? {} : { assignee: requester.id };
+  const tasks = await Task.find(filter)
+    .populate('assignee', 'fullName email role')
+    .populate('createdBy', 'fullName email role')
+    .sort({ createdAt: -1 });
+  res.json(tasks);
+};
+
+export const getTask = async (req: AuthRequest, res: Response) => {
+  const requester = req.user!;
+  const task = await Task.findById(req.params.id)
+    .populate('assignee', 'fullName email role')
+    .populate('createdBy', 'fullName email role');
+  if (!task) {
+    return res.status(404).json({ message: 'Task not found' });
+  }
+  if (!canManage(requester.role) && task.assignee?.toString() !== requester.id) {
+    return res.status(403).json({ message: 'Forbidden' });
+  }
+  res.json(task);
+};
+
+export const createTask = async (req: AuthRequest, res: Response) => {
+  const requester = req.user!;
+  if (!canManage(requester.role)) {
+    return res.status(403).json({ message: 'Only managers can create tasks' });
+  }
+
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  const payload = {
+    title: req.body.title,
+    description: req.body.description,
+    assignee: req.body.assignee || undefined,
+    startDate: req.body.startDate,
+    dueDate: req.body.dueDate,
+    attachments: req.body.attachments || [],
+    createdBy: requester.id
+  };
+
+  const task = await Task.create(payload);
+  const populated = await task.populate([ 
+    { path: 'assignee', select: 'fullName email role' },
+    { path: 'createdBy', select: 'fullName email role' }
+  ]);
+  res.status(201).json(populated);
+};
+
+export const updateTask = async (req: AuthRequest, res: Response) => {
+  const requester = req.user!;
+  if (!canManage(requester.role)) {
+    return res.status(403).json({ message: 'Only managers can edit tasks' });
+  }
+
+  const updates = {
+    title: req.body.title,
+    description: req.body.description,
+    assignee: req.body.assignee,
+    startDate: req.body.startDate,
+    dueDate: req.body.dueDate,
+    attachments: req.body.attachments
+  };
+
+  const task = await Task.findByIdAndUpdate(req.params.id, updates, { new: true })
+    .populate('assignee', 'fullName email role')
+    .populate('createdBy', 'fullName email role');
+  if (!task) {
+    return res.status(404).json({ message: 'Task not found' });
+  }
+  res.json(task);
+};
+
+export const updateTaskStatus = async (req: AuthRequest, res: Response) => {
+  const requester = req.user!;
+  const task = await Task.findById(req.params.id);
+  if (!task) {
+    return res.status(404).json({ message: 'Task not found' });
+  }
+
+  const nextStatus: TaskStatus = req.body.status;
+  if (!nextStatus) {
+    return res.status(400).json({ message: 'Status is required' });
+  }
+
+  const isAssignee = task.assignee?.toString() === requester.id;
+  const manager = canManage(requester.role);
+
+  if (!manager && !isAssignee) {
+    return res.status(403).json({ message: 'Forbidden' });
+  }
+
+  if (!manager) {
+    const allowed = allowedTransitions[task.status as TaskStatus] || [];
+    if (!allowed.includes(nextStatus)) {
+      return res.status(400).json({ message: 'Invalid status transition' });
+    }
+  }
+
+  task.status = nextStatus;
+  await task.save();
+  const populated = await task.populate('assignee', 'fullName email role');
+  res.json(populated);
+};
+
+export const deleteTask = async (req: AuthRequest, res: Response) => {
+  const requester = req.user!;
+  if (!canManage(requester.role)) {
+    return res.status(403).json({ message: 'Only managers can delete tasks' });
+  }
+
+  const task = await Task.findByIdAndDelete(req.params.id);
+  if (!task) {
+    return res.status(404).json({ message: 'Task not found' });
+  }
+  res.status(204).send();
+};
