@@ -9,6 +9,12 @@ export interface IAttachment {
   size?: number;
 }
 
+export interface ILink {
+  _id?: Types.ObjectId;
+  title: string;
+  url: string;
+}
+
 export interface IReply {
   _id?: Types.ObjectId;
   author: Types.ObjectId;
@@ -33,6 +39,7 @@ export interface ITask extends Document {
   startDate: Date;
   dueDate: Date;
   attachments: IAttachment[];
+  links: ILink[];
   comments: IComment[];
 }
 
@@ -44,6 +51,13 @@ const AttachmentSchema = new Schema<IAttachment>(
     size: Number
   },
   { _id: false }
+);
+
+const LinkSchema = new Schema<ILink>(
+  {
+    title: { type: String, required: true },
+    url: { type: String, required: true }
+  }
 );
 
 const ReplySchema = new Schema<IReply>(
@@ -81,6 +95,7 @@ const TaskSchema = new Schema<ITask>(
       }
     },
     attachments: { type: [AttachmentSchema], default: [] },
+    links: { type: [LinkSchema], default: [] },
     comments: { type: [CommentSchema], default: [] }
   },
   { timestamps: true }

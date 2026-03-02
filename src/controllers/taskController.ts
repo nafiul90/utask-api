@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
-import { Task, TaskStatus, ITask, IComment, IReply } from '../models/Task';
+import { Task, TaskStatus, ITask, IComment, IReply, ILink } from '../models/Task';
 import { AuthRequest } from '../middleware/authMiddleware';
 import { Types } from 'mongoose';
 
@@ -70,10 +70,30 @@ export const getTask = async (req: AuthRequest, res: Response) => {
   if (!task) {
     return res.status(404).json({ message: 'Task not found' });
   }
-  if (!canManage(requester.role) && task.assignee?.toString() !== requester.id) {
-    return res.status(403).json({ message: 'Forbidden' });
-  }
+  
   res.json(task);
+};
+
+export const getTaskStats = async (req: AuthRequest, res: Response) => {
+  const requester = req.user!;
+  const baseFilter = canManage(requester.role) ? {} : { assignee: requester.id };
+
+  const pipeline = [
+    { $match: baseFilter },
+    { $group: { _id: '$status', count: { $sum: 1 } } }
+  ];
+
+  const results = await Task.aggregate(pipeline);
+  
+  const stats = results.reduce((acc: Record<string, number>, item: { _id: string, count: number }) => {
+    acc[item._id] = item.count;
+    return acc;
+  }, { pending: 0, processing: 0, qa: 0, completed: 0, canceled: 0 } as Record<string, number>);
+
+  // Add total count with explicit type cast for reduce to resolve TS error
+  stats.total = (Object.values(stats) as number[]).reduce((sum, count) => sum + count, 0);
+
+  res.json(stats);
 };
 
 export const createTask = async (req: AuthRequest, res: Response) => {
@@ -94,6 +114,7 @@ export const createTask = async (req: AuthRequest, res: Response) => {
     startDate: req.body.startDate,
     dueDate: req.body.dueDate,
     attachments: req.body.attachments || [],
+    links: req.body.links || [], // Add links to payload
     createdBy: requester.id
   };
 
@@ -117,7 +138,8 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
     assignee: req.body.assignee,
     startDate: req.body.startDate,
     dueDate: req.body.dueDate,
-    attachments: req.body.attachments
+    attachments: req.body.attachments,
+    links: req.body.links // Add links to updates
   };
 
   const task = await Task.findByIdAndUpdate(req.params.id, updates, { new: true })

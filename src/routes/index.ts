@@ -24,7 +24,8 @@ import {
   deleteComment,
   replyToComment,
   updateReply,
-  deleteReply
+  deleteReply,
+  getTaskStats
 } from '../controllers/taskController';
 
 const router = Router();
@@ -85,6 +86,7 @@ router.get('/tasks/:id', getTask);
 router.put('/tasks/:id', taskUpdateValidator, updateTask);
 router.patch('/tasks/:id/status', statusValidator, updateTaskStatus);
 router.delete('/tasks/:id', deleteTask);
+router.get('/task-stats', getTaskStats); // Added this line back to register the route
 
 // Comments
 router.post('/tasks/:id/comments', addComment);
