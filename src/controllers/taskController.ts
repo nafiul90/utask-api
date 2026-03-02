@@ -17,11 +17,39 @@ const canManage = (role?: string | null) => !!role && managerRoles.includes(role
 
 export const listTasks = async (req: AuthRequest, res: Response) => {
   const requester = req.user!;
-  const filter = canManage(requester.role) ? {} : { assignee: requester.id };
+  
+  // Base Filter
+  let filter: any = canManage(requester.role) ? {} : { assignee: requester.id };
+
+  // Query Params Search
+  const { search, assignee, startDate, endDate } = req.query;
+
+  if (search) {
+    filter.$or = [
+      { title: { $regex: search, $options: 'i' } },
+      { description: { $regex: search, $options: 'i' } }
+    ];
+  }
+
+  if (assignee && canManage(requester.role)) {
+    filter.assignee = assignee;
+  }
+
+  if (startDate || endDate) {
+    filter.dueDate = {};
+    if (startDate) filter.dueDate.$gte = new Date(startDate as string);
+    if (endDate) {
+      const end = new Date(endDate as string);
+      end.setHours(23, 59, 59, 999);
+      filter.dueDate.$lte = end;
+    }
+  }
+
   const tasks = await Task.find(filter)
     .populate('assignee', 'fullName email role profilePicture')
     .populate('createdBy', 'fullName email role profilePicture')
     .sort({ createdAt: -1 });
+    
   res.json(tasks);
 };
 
