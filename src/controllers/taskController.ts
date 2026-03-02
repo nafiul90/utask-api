@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
-import { Task, TaskStatus, ITask, IComment } from '../models/Task';
+import { Task, TaskStatus, ITask, IComment, IReply } from '../models/Task';
 import { AuthRequest } from '../middleware/authMiddleware';
 import { Types } from 'mongoose';
 
@@ -146,6 +146,15 @@ export const deleteTask = async (req: AuthRequest, res: Response) => {
   res.status(204).send();
 };
 
+async function populateTaskComments(task: any) {
+  return task.populate([
+    { path: 'comments.author', select: 'fullName email role profilePicture' },
+    { path: 'comments.replies.author', select: 'fullName email role profilePicture' }
+  ]);
+}
+
+// --- Comments & Replies ---
+
 export const addComment = async (req: AuthRequest, res: Response) => {
   const { content } = req.body;
   if (!content) return res.status(400).json({ message: 'Content is required' });
@@ -161,20 +170,46 @@ export const addComment = async (req: AuthRequest, res: Response) => {
   });
 
   await task.save();
-  
-  // We need to re-fetch to populate the newly added comment author
-  const populated = await Task.findById(task._id)
-    .populate('assignee', 'fullName email role profilePicture')
-    .populate('createdBy', 'fullName email role profilePicture')
-    .populate({
-      path: 'comments.author',
-      select: 'fullName email role profilePicture'
-    })
-    .populate({
-      path: 'comments.replies.author',
-      select: 'fullName email role profilePicture'
-    });
-  
+  const populated = await populateTaskComments(task);
+  res.json(populated);
+};
+
+export const updateComment = async (req: AuthRequest, res: Response) => {
+  const { content } = req.body;
+  const task = await Task.findById(req.params.id);
+  if (!task) return res.status(404).json({ message: 'Task not found' });
+
+  const comment = (task.comments as any).id(req.params.commentId);
+  if (!comment) return res.status(404).json({ message: 'Comment not found' });
+
+  const requester = req.user!;
+  const isAuthor = comment.author.toString() === requester.id;
+  if (!canManage(requester.role) && !isAuthor) {
+    return res.status(403).json({ message: 'Forbidden' });
+  }
+
+  comment.content = content;
+  await task.save();
+  const populated = await populateTaskComments(task);
+  res.json(populated);
+};
+
+export const deleteComment = async (req: AuthRequest, res: Response) => {
+  const task = await Task.findById(req.params.id);
+  if (!task) return res.status(404).json({ message: 'Task not found' });
+
+  const comment = (task.comments as any).id(req.params.commentId);
+  if (!comment) return res.status(404).json({ message: 'Comment not found' });
+
+  const requester = req.user!;
+  const isAuthor = comment.author.toString() === requester.id;
+  if (!canManage(requester.role) && !isAuthor) {
+    return res.status(403).json({ message: 'Forbidden' });
+  }
+
+  comment.deleteOne();
+  await task.save();
+  const populated = await populateTaskComments(task);
   res.json(populated);
 };
 
@@ -185,9 +220,7 @@ export const replyToComment = async (req: AuthRequest, res: Response) => {
   const task = await Task.findById(req.params.id);
   if (!task) return res.status(404).json({ message: 'Task not found' });
 
-  // Use type assertion or find by ID manually if types are tricky with subdocs
   const comment = (task.comments as any).id(req.params.commentId);
-  
   if (!comment) return res.status(404).json({ message: 'Comment not found' });
 
   comment.replies.push({
@@ -197,18 +230,51 @@ export const replyToComment = async (req: AuthRequest, res: Response) => {
   });
 
   await task.save();
+  const populated = await populateTaskComments(task);
+  res.json(populated);
+};
 
-  const populated = await Task.findById(task._id)
-    .populate('assignee', 'fullName email role profilePicture')
-    .populate('createdBy', 'fullName email role profilePicture')
-    .populate({
-      path: 'comments.author',
-      select: 'fullName email role profilePicture'
-    })
-    .populate({
-      path: 'comments.replies.author',
-      select: 'fullName email role profilePicture'
-    });
+export const updateReply = async (req: AuthRequest, res: Response) => {
+  const { content } = req.body;
+  const task = await Task.findById(req.params.id);
+  if (!task) return res.status(404).json({ message: 'Task not found' });
 
+  const comment = (task.comments as any).id(req.params.commentId);
+  if (!comment) return res.status(404).json({ message: 'Comment not found' });
+
+  const reply = comment.replies.id(req.params.replyId);
+  if (!reply) return res.status(404).json({ message: 'Reply not found' });
+
+  const requester = req.user!;
+  const isAuthor = reply.author.toString() === requester.id;
+  if (!canManage(requester.role) && !isAuthor) {
+    return res.status(403).json({ message: 'Forbidden' });
+  }
+
+  reply.content = content;
+  await task.save();
+  const populated = await populateTaskComments(task);
+  res.json(populated);
+};
+
+export const deleteReply = async (req: AuthRequest, res: Response) => {
+  const task = await Task.findById(req.params.id);
+  if (!task) return res.status(404).json({ message: 'Task not found' });
+
+  const comment = (task.comments as any).id(req.params.commentId);
+  if (!comment) return res.status(404).json({ message: 'Comment not found' });
+
+  const reply = comment.replies.id(req.params.replyId);
+  if (!reply) return res.status(404).json({ message: 'Reply not found' });
+
+  const requester = req.user!;
+  const isAuthor = reply.author.toString() === requester.id;
+  if (!canManage(requester.role) && !isAuthor) {
+    return res.status(403).json({ message: 'Forbidden' });
+  }
+
+  reply.deleteOne();
+  await task.save();
+  const populated = await populateTaskComments(task);
   res.json(populated);
 };

@@ -20,7 +20,11 @@ import {
   updateTask,
   updateTaskStatus,
   addComment,
-  replyToComment
+  updateComment,
+  deleteComment,
+  replyToComment,
+  updateReply,
+  deleteReply
 } from '../controllers/taskController';
 
 const router = Router();
@@ -84,6 +88,12 @@ router.delete('/tasks/:id', deleteTask);
 
 // Comments
 router.post('/tasks/:id/comments', addComment);
+router.put('/tasks/:id/comments/:commentId', updateComment);
+router.delete('/tasks/:id/comments/:commentId', deleteComment);
+
+// Replies
 router.post('/tasks/:id/comments/:commentId/replies', replyToComment);
+router.put('/tasks/:id/comments/:commentId/replies/:replyId', updateReply);
+router.delete('/tasks/:id/comments/:commentId/replies/:replyId', deleteReply);
 
 export default router;
