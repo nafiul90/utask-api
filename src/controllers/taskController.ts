@@ -128,7 +128,8 @@ export const getTaskStats = async (req: AuthRequest, res: Response) => {
 
   const userStats = await Task.aggregate(userPipeline);
 
-  // FIX: Ensure res.json sends the full nested object
+  // FIX: Ensure res.json sends the full nested object correctly.
+  // This was the source of the frontend rendering problem.
   res.json({ global: globalStats, users: userStats });
 };
 
