@@ -25,7 +25,8 @@ import {
   replyToComment,
   updateReply,
   deleteReply,
-  getTaskStats
+  getTaskStats,
+  reorderTasks
 } from '../controllers/taskController';
 
 const router = Router();
@@ -85,8 +86,9 @@ router.post('/tasks', taskCreateValidator, createTask);
 router.get('/tasks/:id', getTask);
 router.put('/tasks/:id', taskUpdateValidator, updateTask);
 router.patch('/tasks/:id/status', statusValidator, updateTaskStatus);
+router.patch('/tasks/reorder', reorderTasks); // Added this line back
 router.delete('/tasks/:id', deleteTask);
-router.get('/task-stats', getTaskStats); // Added this line back to register the route
+router.get('/task-stats', getTaskStats);
 
 // Comments
 router.post('/tasks/:id/comments', addComment);

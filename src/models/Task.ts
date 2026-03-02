@@ -41,6 +41,7 @@ export interface ITask extends Document {
   attachments: IAttachment[];
   links: ILink[];
   comments: IComment[];
+  position: number; // Added for sorting within status columns
 }
 
 const AttachmentSchema = new Schema<IAttachment>(
@@ -96,7 +97,8 @@ const TaskSchema = new Schema<ITask>(
     },
     attachments: { type: [AttachmentSchema], default: [] },
     links: { type: [LinkSchema], default: [] },
-    comments: { type: [CommentSchema], default: [] }
+    comments: { type: [CommentSchema], default: [] },
+    position: { type: Number, default: 0 } // Default position
   },
   { timestamps: true }
 );

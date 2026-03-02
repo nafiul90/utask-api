@@ -18,10 +18,8 @@ const canManage = (role?: string | null) => !!role && managerRoles.includes(role
 export const listTasks = async (req: AuthRequest, res: Response) => {
   const requester = req.user!;
   
-  // Base Filter
   let filter: any = canManage(requester.role) ? {} : { assignee: requester.id };
 
-  // Query Params Search
   const { search, assignee, startDate, endDate } = req.query;
 
   if (search) {
@@ -48,7 +46,7 @@ export const listTasks = async (req: AuthRequest, res: Response) => {
   const tasks = await Task.find(filter)
     .populate('assignee', 'fullName email role profilePicture')
     .populate('createdBy', 'fullName email role profilePicture')
-    .sort({ createdAt: -1 });
+    .sort({ status: 1, position: 1, createdAt: 1 });
     
   res.json(tasks);
 };
@@ -76,24 +74,62 @@ export const getTask = async (req: AuthRequest, res: Response) => {
 
 export const getTaskStats = async (req: AuthRequest, res: Response) => {
   const requester = req.user!;
-  const baseFilter = canManage(requester.role) ? {} : { assignee: requester.id };
+  const { startDate, endDate } = req.query; 
 
-  const pipeline = [
-    { $match: baseFilter },
+  let commonMatchFilter: any = {};
+
+  if (startDate || endDate) {
+    commonMatchFilter.dueDate = {};
+    if (startDate) commonMatchFilter.dueDate.$gte = new Date(startDate as string);
+    if (endDate) {
+      const end = new Date(endDate as string);
+      end.setHours(23, 59, 59, 999);
+      commonMatchFilter.dueDate.$lte = end;
+    }
+  }
+
+  const requesterSpecificMatchFilter: any = canManage(requester.role) ? {} : { assignee: new Types.ObjectId(requester.id) };
+
+  const globalMatchFilter = { ...commonMatchFilter, ...requesterSpecificMatchFilter };
+
+  const globalPipeline = [
+    { $match: globalMatchFilter },
     { $group: { _id: '$status', count: { $sum: 1 } } }
   ];
 
-  const results = await Task.aggregate(pipeline);
-  
-  const stats = results.reduce((acc: Record<string, number>, item: { _id: string, count: number }) => {
+  const globalResults = await Task.aggregate(globalPipeline);
+  const globalStats = globalResults.reduce((acc: Record<string, number>, item: { _id: string, count: number }) => {
     acc[item._id] = item.count;
     return acc;
   }, { pending: 0, processing: 0, qa: 0, completed: 0, canceled: 0 } as Record<string, number>);
+  globalStats.total = (Object.values(globalStats) as number[]).reduce((sum, count) => sum + count, 0);
 
-  // Add total count with explicit type cast for reduce to resolve TS error
-  stats.total = (Object.values(stats) as number[]).reduce((sum, count) => sum + count, 0);
+  const userPipeline = [
+    { $match: { ...commonMatchFilter, assignee: { $exists: true, $ne: null } } }, 
+    { 
+      $group: {
+        _id: '$assignee',
+        pending: { $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] } },
+        processing: { $sum: { $cond: [{ $eq: ['$status', 'processing'] }, 1, 0] } },
+        qa: { $sum: { $cond: [{ $eq: ['$status', 'qa'] }, 1, 0] } },
+        completed: { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] } },
+        canceled: { $sum: { $cond: [{ $eq: ['$status', 'canceled'] }, 1, 0] } },
+        total: { $sum: 1 }
+      }
+    },
+    { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'assigneeInfo' } },
+    { $unwind: '$assigneeInfo' },
+    { $project: { _id: 0, assignee: '$assigneeInfo', pending: 1, processing: 1, qa: 1, completed: 1, canceled: 1, total: 1 } }
+  ];
 
-  res.json(stats);
+  if (!canManage(requester.role)) {
+    userPipeline[0].$match = { ...userPipeline[0].$match, assignee: new Types.ObjectId(requester.id) };
+  }
+
+  const userStats = await Task.aggregate(userPipeline);
+
+  // FIX: Ensure res.json sends the full nested object
+  res.json({ global: globalStats, users: userStats });
 };
 
 export const createTask = async (req: AuthRequest, res: Response) => {
@@ -107,15 +143,20 @@ export const createTask = async (req: AuthRequest, res: Response) => {
     return res.status(400).json({ errors: errors.array() });
   }
 
+  const lastTaskInStatus = await Task.findOne({ status: req.body.status || 'pending' }).sort({ position: -1 });
+  const newPosition = lastTaskInStatus ? lastTaskInStatus.position + 1 : 0;
+
   const payload = {
     title: req.body.title,
     description: req.body.description,
+    status: req.body.status || 'pending', // Ensure status is set for initial position calculation
     assignee: req.body.assignee || undefined,
     startDate: req.body.startDate,
     dueDate: req.body.dueDate,
     attachments: req.body.attachments || [],
     links: req.body.links || [], // Add links to payload
-    createdBy: requester.id
+    createdBy: requester.id,
+    position: newPosition // Assign initial position
   };
 
   const task = await Task.create(payload);
@@ -139,7 +180,7 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
     startDate: req.body.startDate,
     dueDate: req.body.dueDate,
     attachments: req.body.attachments,
-    links: req.body.links // Add links to updates
+    links: req.body.links,
   };
 
   const task = await Task.findByIdAndUpdate(req.params.id, updates, { new: true })
@@ -177,10 +218,42 @@ export const updateTaskStatus = async (req: AuthRequest, res: Response) => {
     }
   }
 
+  if (task.status !== nextStatus) {
+    const lastTaskInNewStatus = await Task.findOne({ status: nextStatus }).sort({ position: -1 });
+    task.position = lastTaskInNewStatus ? lastTaskInNewStatus.position + 1 : 0;
+  }
+
   task.status = nextStatus;
   await task.save();
   const populated = await task.populate('assignee', 'fullName email role');
   res.json(populated);
+};
+
+export const reorderTasks = async (req: AuthRequest, res: Response) => {
+  const requester = req.user!;
+  if (!canManage(requester.role)) {
+    return res.status(403).json({ message: 'Only managers can reorder tasks' });
+  }
+
+  const { updates } = req.body; // updates: [{ taskId: string, position: number, status: string }]
+  if (!Array.isArray(updates)) {
+    return res.status(400).json({ message: 'Invalid update payload' });
+  }
+
+  const operations = updates.map((item) => ({
+    updateOne: {
+      filter: { _id: item.taskId, status: item.status },
+      update: { $set: { position: item.position } }
+    }
+  }));
+
+  try {
+    await Task.bulkWrite(operations);
+    res.status(200).json({ message: 'Tasks reordered successfully' });
+  } catch (error) {
+    console.error('Bulk reorder failed:', error);
+    res.status(500).json({ message: 'Failed to reorder tasks' });
+  }
 };
 
 export const deleteTask = async (req: AuthRequest, res: Response) => {
