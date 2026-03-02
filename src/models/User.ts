@@ -12,6 +12,7 @@ export interface IUser extends Document {
   department?: string;
   gender?: Gender;
   profilePicture?: string;
+  fcmToken?: string;
 }
 
 const UserSchema = new Schema<IUser>(
@@ -23,7 +24,7 @@ const UserSchema = new Schema<IUser>(
     jobTitle: { type: String },
     department: { type: String },
     gender: { type: String, enum: ['male', 'female', 'non-binary', 'prefer-not-to-say'] },
-    profilePicture: { type: String }
+    profilePicture: { type: String },
   },
   { timestamps: true }
 );

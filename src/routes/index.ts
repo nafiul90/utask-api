@@ -28,6 +28,14 @@ import {
   getTaskStats,
   reorderTasks
 } from '../controllers/taskController';
+import {
+  getUserNotifications,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+  deleteNotification,
+  registerFCMToken,
+  getNotificationStats
+} from "../controllers/notificationController";
 
 const router = Router();
 
@@ -100,4 +108,10 @@ router.post('/tasks/:id/comments/:commentId/replies', replyToComment);
 router.put('/tasks/:id/comments/:commentId/replies/:replyId', updateReply);
 router.delete('/tasks/:id/comments/:commentId/replies/:replyId', deleteReply);
 
+// Notifications
+router.get("/notifications", getUserNotifications);
+router.get("/notifications/stats", getNotificationStats);
+router.patch("/notifications/:id/read", markNotificationAsRead);
+router.patch("/notifications/read-all", markAllNotificationsAsRead);
+router.delete("/notifications/:id", deleteNotification);
 export default router;
