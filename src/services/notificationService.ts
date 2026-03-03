@@ -64,7 +64,7 @@ export class NotificationService {
   /**
    * Notify task assignee
    */
-  static async notifyTaskAssignee(taskId: string, assigneeId: string, title: string, message: string) {
+  static async notifyTaskAssignee(assigneeId: string, taskId: string, title: string, message: string) {
     return this.createNotification({
       userId: assigneeId,
       title,
@@ -77,11 +77,11 @@ export class NotificationService {
   /**
    * Notify task assignee about new comment
    */
-  static async notifyCommentToAssignee(taskId: string, assigneeId: string, commenterName: string) {
+  static async notifyCommentToAssignee(assigneeId: string, taskId: string, taskTitle: string, message: string) {
     return this.createNotification({
       userId: assigneeId,
       title: 'New Comment on Your Task',
-      message: `${commenterName} commented on a task assigned to you`,
+      message,
       type: 'comment_added',
       relatedTaskId: taskId
     });
@@ -90,10 +90,10 @@ export class NotificationService {
   /**
    * Notify admins and managers about status change
    */
-  static async notifyStatusChangeToAdmins(taskId: string, taskTitle: string, oldStatus: string, newStatus: string, changedBy: string) {
+  static async notifyStatusChangeToAdmins(taskId: string, taskTitle: string, message: string) {
     return this.createNotificationsForAdminsAndManagers(
       'Task Status Changed',
-      `${changedBy} changed task "${taskTitle}" from ${oldStatus} to ${newStatus}`,
+      message,
       'status_changed',
       taskId
     );
@@ -102,11 +102,23 @@ export class NotificationService {
   /**
    * Notify admins and managers about new comment
    */
-  static async notifyNewCommentToAdmins(taskId: string, taskTitle: string, commenterName: string) {
+  static async notifyNewCommentToAdmins(taskId: string, taskTitle: string, message: string) {
     return this.createNotificationsForAdminsAndManagers(
       'New Comment Added',
-      `${commenterName} commented on task "${taskTitle}"`,
+      message,
       'comment_added',
+      taskId
+    );
+  }
+
+  /**
+   * Notify admins and managers about new task
+   */
+  static async notifyNewTaskToAdmins(taskId: string, taskTitle: string, message: string) {
+    return this.createNotificationsForAdminsAndManagers(
+      'New Task Created',
+      message,
+      'task_assigned',
       taskId
     );
   }
