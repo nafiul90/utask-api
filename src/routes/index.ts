@@ -26,7 +26,8 @@ import {
   updateReply,
   deleteReply,
   getTaskStats,
-  reorderTasks
+  reorderTasks,
+  uploadAudioAttachment
 } from '../controllers/taskController';
 import {
   getUserNotifications,
@@ -113,4 +114,7 @@ router.get("/notifications/stats", getNotificationStats);
 router.patch("/notifications/:id/read", markNotificationAsRead);
 router.patch("/notifications/read-all", markAllNotificationsAsRead);
 router.delete("/notifications/:id", deleteNotification);
+router.post('/tasks/:id/attachments/audio',upload.single('file'), uploadAudioAttachment);
+
+
 export default router;

@@ -3,6 +3,48 @@ import { Task } from "../models/Task";
 import { User } from "../models/User";
 import { NotificationService } from '../services/notificationService';
 
+// Audio upload with MP3 conversion
+import multer from 'multer';
+import fs from 'fs/promises';
+const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
+const ffmpeg = require('fluent-ffmpeg');
+ffmpeg.setFfmpegPath(ffmpegPath);
+
+const audioStorage = multer.diskStorage({
+  destination: 'uploads/audio/',
+  filename: (req, file, cb) => cb(null, req.params.id + '-' + Date.now() + '-' + file.originalname)
+});
+const uploadAudio = multer({ storage: audioStorage });
+
+export const uploadAudioAttachment = async (req: Request, res: Response) => {
+  try {
+    const taskId = req.params.id;
+    const file = req.file;
+    if (!file) return res.status(400).json({ message: 'No file' });
+
+    // Convert to MP3
+    const mp3Path = file.path.replace(/\\.webm$/, '.mp3');
+    ffmpeg(file.path)
+      .audioCodec('mp3')
+      .toFormat('mp3')
+      .output(mp3Path)
+      .on('end', async () => {
+        await fs.unlink(file.path); // delete webm
+        const task = await Task.findById(taskId);
+        task.attachments.push({
+          filename: file.filename.replace(/\\.webm$/, '.mp3'),
+          path: file.path.replace(/\\.webm$/, '.mp3'),
+          type: 'audio/mp3'
+        });
+        await task.save();
+        res.json({ message: 'MP3 uploaded' });
+      })
+      .run();
+  } catch (error) {
+    res.status(500).json({ error });
+  }
+};
+
 export const listTasks = async (req: Request, res: Response) => {
   try {
     const tasks = await Task.find()
