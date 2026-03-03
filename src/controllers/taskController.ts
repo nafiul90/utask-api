@@ -468,6 +468,51 @@ export const getTaskStats = async (req: Request, res: Response) => {
       status: { $ne: 'completed' }
     });
 
+    // Get user-specific statistics for Team Member Task Breakdown
+    const userStats = await Task.aggregate([
+      { $match: matchFilter },
+      {
+        $group: {
+          _id: '$assignee',
+          total: { $sum: 1 },
+          pending: { $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] } },
+          processing: { $sum: { $cond: [{ $eq: ['$status', 'processing'] }, 1, 0] } },
+          qa: { $sum: { $cond: [{ $eq: ['$status', 'qa'] }, 1, 0] } },
+          completed: { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] } },
+          canceled: { $sum: { $cond: [{ $eq: ['$status', 'canceled'] }, 1, 0] } }
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'assignee'
+        }
+      },
+      { $unwind: { path: '$assignee', preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          assignee: {
+            _id: '$assignee._id',
+            fullName: { $ifNull: ['$assignee.fullName', 'Unassigned'] },
+            email: { $ifNull: ['$assignee.email', ''] },
+            role: { $ifNull: ['$assignee.role', ''] },
+            profilePicture: { $ifNull: ['$assignee.profilePicture', ''] }
+          },
+          total: 1,
+          pending: 1,
+          processing: 1,
+          qa: 1,
+          completed: 1,
+          canceled: 1,
+          _id: 0
+        }
+      },
+      { $sort: { total: -1 } },
+      { $limit: 10 }
+    ]);
+
     res.json({
       byStatus: stats,
       totals: {
@@ -475,7 +520,8 @@ export const getTaskStats = async (req: Request, res: Response) => {
         completed: completedTasks,
         overdue: overdueTasks,
         completionRate: totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
-      }
+      },
+      users: userStats
     });
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch task stats', error });
