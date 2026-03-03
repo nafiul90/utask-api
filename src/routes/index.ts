@@ -33,7 +33,6 @@ import {
   markNotificationAsRead,
   markAllNotificationsAsRead,
   deleteNotification,
-  registerFCMToken,
   getNotificationStats
 } from "../controllers/notificationController";
 

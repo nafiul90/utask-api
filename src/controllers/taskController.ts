@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import Task from '../models/Task';
-import User from '../models/User';
+import { Task } from "../models/Task";
+import { User } from "../models/User";
 import { NotificationService } from '../services/notificationService';
 
 export const listTasks = async (req: Request, res: Response) => {
@@ -46,7 +46,7 @@ export const createTask = async (req: Request, res: Response) => {
     const task = new Task({
       title,
       description,
-      status: status || 'todo',
+      status: status || 'pending',
       assignee: assignee || null,
       createdBy: userId,
       priority: priority || 'medium',
