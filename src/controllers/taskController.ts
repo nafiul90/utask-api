@@ -461,11 +461,11 @@ export const getTaskStats = async (req: Request, res: Response) => {
 
     // Get total counts
     const totalTasks = await Task.countDocuments(matchFilter);
-    const completedTasks = await Task.countDocuments({ ...matchFilter, status: 'done' });
+    const completedTasks = await Task.countDocuments({ ...matchFilter, status: 'completed' });
     const overdueTasks = await Task.countDocuments({
       ...matchFilter,
       dueDate: { $lt: new Date() },
-      status: { $ne: 'done' }
+      status: { $ne: 'completed' }
     });
 
     res.json({
