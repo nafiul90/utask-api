@@ -563,7 +563,7 @@ export const getTaskStats = async (req: Request, res: Response) => {
         overdue: overdueTasks,
         completionRate: totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
       },
-      users: userStats
+      users: userStats,
     });
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch task stats', error });
