@@ -2,7 +2,6 @@ import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
 import { NotificationService } from "../services/notificationService";
 import { Task, TaskStatus, ITask, IComment, IReply, ILink } from '../models/Task';
-import { NotificationService } from '../services/notificationService';
 import { AuthRequest } from '../middleware/authMiddleware';
 import { Types } from 'mongoose';
 
