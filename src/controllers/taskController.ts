@@ -17,6 +17,7 @@ const allowedTransitions: Record<TaskStatus, TaskStatus[]> = {
 
 const canManage = (role?: string | null) => !!role && managerRoles.includes(role);
 
+// Test notification trigger added by Ira - 2026-03-05
 export const listTasks = async (req: AuthRequest, res: Response) => {
   const requester = req.user!;
   
@@ -211,6 +212,15 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
   if (!task) {
     return res.status(404).json({ message: 'Task not found' });
   }
+  // Notify assignee change                                                                                                                                        
+     if (updates.assignee && updates.assignee !== oldTask.assignee?.toString()) {                                                                                     
+       await NotificationService.notifyTaskAssignee(updates.assignee, req.params.id, task.title, `Assigned to task: "${task.title}"`);                               
+     }                                                                                                                                                                
+                                                                                                                                                                      
+     // Notify status change                                                                                                                                          
+     if (updates.status && updates.status !== oldTask.status) {                                                                                                       
+       await NotificationService.notifyStatusChangeToAdmins(req.params.id, task.title, `Status changed from ${oldTask.status} to ${updates.status}`);                
+     } 
   res.json(task);
 };
 
@@ -247,6 +257,13 @@ export const updateTaskStatus = async (req: AuthRequest, res: Response) => {
 
   task.status = nextStatus;
   await task.save();
+  if (oldStatus !== nextStatus) {                                                                                                                                  
+       await NotificationService.notifyStatusChangeToAdmins(                                                                                                         
+         req.params.id,                                                                                                                                               
+         task.title,                                                                                                                                                  
+         `Task "${task.title}" status changed from ${oldStatus} to ${nextStatus}`                                                                                     
+       );                                                                                                                                                             
+     }     
   const populated = await task.populate('assignee', 'fullName email role');
   res.json(populated);
 };
@@ -315,6 +332,22 @@ export const addComment = async (req: AuthRequest, res: Response) => {
   });
 
   await task.save();
+  // Notify assignee if not author                                                                                                                                 
+     if (task.assignee && task.assignee.toString() !== req.user!.id) {                                                                                                
+       await NotificationService.notifyCommen tToAssignee(                                                                                                            
+         task.assignee.toString(),                                                                                                                                    
+         req.params.id,                                                                                                                                               
+         task.title,                                                                                                                                                  
+         `New comment on "${task.title}"`                                                                                                                             
+       );                                                                                                                                                             
+     }                                                                                                                                                                
+                                                                                                                                                                      
+     // Notify admins                                                                                                                                                 
+     await NotificationService.notifyNewCom mentToAdmins(                                                                                                             
+       req.params.id,                                                                                                                                                 
+       task.title,                                                                                                                                                    
+       `New comment on "${task.title}"`                                                                                                                               
+     );     
   const populated = await populateTaskComments(task);
   res.json(populated);
 };
