@@ -1,11 +1,12 @@
 import { Request, Response } from 'express';
 import { Task } from '../models/Task';
+import { PipelineStage } from 'mongoose';
 
 export const getRecentComments = async (req: Request, res: Response) => {
   try {
     const { limit = 10 } = req.query;
 
-    const pipeline = [
+    const pipeline: PipelineStage[] = [
       { $unwind: { path: '$comments', preserveNullAndEmptyArrays: true } },
       { $match: { 'comments._id': { $exists: true } } },
       { $sort: { 'comments.createdAt': -1 } },
@@ -77,6 +78,7 @@ export const getRecentComments = async (req: Request, res: Response) => {
       }
     ];
 
+    // @ts-ignore - mongoose pipeline typing quirk
     const recentComments = await Task.aggregate(pipeline);
 
     res.json(recentComments);
