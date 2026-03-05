@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
 import { NotificationService } from "../services/notificationService";
 import { Task, TaskStatus, ITask, IComment, IReply, ILink } from '../models/Task';
+import { NotificationService } from '../services/notificationService';
 import { AuthRequest } from '../middleware/authMiddleware';
 import { Types } from 'mongoose';
 
@@ -162,6 +163,25 @@ export const createTask = async (req: AuthRequest, res: Response) => {
   };
 
   const task = await Task.create(payload);
+  await task.save();
+
+  const title = payload.title;
+
+  if (payload.assignee && payload.assignee !== requester.id) {
+    await NotificationService.notifyTaskAssignee(
+      payload.assignee,
+      task._id.toString(),
+      title,
+      `You have been assigned a new task: "${title}"`
+    );
+  }
+
+  await NotificationService.notifyNewTaskToAdmins(
+    task._id.toString(),
+    title,
+    `A new task "${title}" has been created`
+  );
+
   const populated = await task.populate([ 
     { path: 'assignee', select: 'fullName email role' },
     { path: 'createdBy', select: 'fullName email role' }
