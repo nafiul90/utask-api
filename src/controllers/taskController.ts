@@ -224,48 +224,41 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
   res.json(task);
 };
 
-export const updateTaskStatus = async (req: AuthRequest, res: Response) => {
-  const requester = req.user!;
-  const task = await Task.findById(req.params.id);
-  if (!task) {
-    return res.status(404).json({ message: 'Task not found' });
-  }
+export const updateTaskStatus = async (req: Request, res: Response) => {
+  try {
+    const { status } = req.body;
+    const taskId = req.params.id;
 
-  const nextStatus: TaskStatus = req.body.status;
-  if (!nextStatus) {
-    return res.status(400).json({ message: 'Status is required' });
-  }
-
-  const isAssignee = task.assignee?.toString() === requester.id;
-  const manager = canManage(requester.role);
-
-  if (!manager && !isAssignee) {
-    return res.status(403).json({ message: 'Forbidden' });
-  }
-
-  if (!manager) {
-    const allowed = allowedTransitions[task.status as TaskStatus] || [];
-    if (!allowed.includes(nextStatus)) {
-      return res.status(400).json({ message: 'Invalid status transition' });
+    const oldTask = await Task.findById(taskId);
+    if (!oldTask) {
+      return res.status(404).json({ message: 'Task not found' });
     }
-  }
 
-  if (task.status !== nextStatus) {
-    const lastTaskInNewStatus = await Task.findOne({ status: nextStatus }).sort({ position: -1 });
-    task.position = lastTaskInNewStatus ? lastTaskInNewStatus.position + 1 : 0;
-  }
+    const task = await Task.findByIdAndUpdate(
+      taskId,
+      { status },
+      { new: true }
+    )
+      .populate('assignee', 'fullName email profilePicture')
+      .populate('createdBy', 'fullName email profilePicture');
 
-  task.status = nextStatus;
-  await task.save();
-  if (oldStatus !== nextStatus) {                                                                                                                                  
-       await NotificationService.notifyStatusChangeToAdmins(                                                                                                         
-         req.params.id,                                                                                                                                               
-         task.title,                                                                                                                                                  
-         `Task "${task.title}" status changed from ${oldStatus} to ${nextStatus}`                                                                                     
-       );                                                                                                                                                             
-     }     
-  const populated = await task.populate('assignee', 'fullName email role');
-  res.json(populated);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    // Send notification for status change
+    if (status !== oldTask.status) {
+      await NotificationService.notifyStatusChangeToAdmins(
+        taskId,
+        task.title,
+        `Task "${task.title}" status changed from ${oldTask.status} to ${status}`
+      );
+    }
+
+    res.json(task);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to update task status', error });
+  }
 };
 
 export const reorderTasks = async (req: AuthRequest, res: Response) => {
@@ -334,7 +327,7 @@ export const addComment = async (req: AuthRequest, res: Response) => {
   await task.save();
   // Notify assignee if not author                                                                                                                                 
      if (task.assignee && task.assignee.toString() !== req.user!.id) {                                                                                                
-       await NotificationService.notifyCommen tToAssignee(                                                                                                            
+       await NotificationService.notifyCommentToAssignee(                                                                                                            
          task.assignee.toString(),                                                                                                                                    
          req.params.id,                                                                                                                                               
          task.title,                                                                                                                                                  
@@ -343,7 +336,7 @@ export const addComment = async (req: AuthRequest, res: Response) => {
      }                                                                                                                                                                
                                                                                                                                                                       
      // Notify admins                                                                                                                                                 
-     await NotificationService.notifyNewCom mentToAdmins(                                                                                                             
+     await NotificationService.notifyNewCommentToAdmins(                                                                                                             
        req.params.id,                                                                                                                                                 
        task.title,                                                                                                                                                    
        `New comment on "${task.title}"`                                                                                                                               
