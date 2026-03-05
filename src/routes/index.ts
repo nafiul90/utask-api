@@ -36,6 +36,7 @@ import {
   deleteNotification,
   getNotificationStats
 } from "../controllers/notificationController";
+import { getRecentComments } from "../controllers/commentController";
 
 const router = Router();
 
@@ -115,6 +116,7 @@ router.patch("/notifications/:id/read", markNotificationAsRead);
 router.patch("/notifications/read-all", markAllNotificationsAsRead);
 router.delete("/notifications/:id", deleteNotification);
 router.post('/tasks/:id/attachments/audio',upload.single('file'), uploadAudioAttachment);
+router.get("/comments/recent", authMiddleware, getRecentComments);
 
 
 export default router;

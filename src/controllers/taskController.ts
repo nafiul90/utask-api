@@ -47,7 +47,30 @@ export const uploadAudioAttachment = async (req: Request, res: Response) => {
 
 export const listTasks = async (req: Request, res: Response) => {
   try {
-    const tasks = await Task.find()
+    const { search, status, assignee, priority } = req.query;
+    
+    const filter: any = {};
+    
+    if (search) {
+      filter.$or = [
+        { title: { $regex: search as string, $options: 'i' } },
+        { description: { $regex: search as string, $options: 'i' } }
+      ];
+    }
+    
+    if (status) {
+      filter.status = status as string;
+    }
+    
+    if (assignee) {
+      filter.assignee = assignee as string;
+    }
+    
+    if (priority && priority !== 'all') {
+      filter.priority = priority as string;
+    }
+    
+    const tasks = await Task.find(filter)
       .populate('assignee', 'fullName email profilePicture')
       .populate('createdBy', 'fullName email profilePicture')
       .sort({ position: 1, createdAt: -1 });

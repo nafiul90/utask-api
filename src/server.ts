@@ -24,3 +24,6 @@ async function bootstrap() {
 }
 
 bootstrap();
+
+// OpenClaw demo write test - Wed Mar  4 08:22:28 CET 2026
+// Proof: File changed successfully!
