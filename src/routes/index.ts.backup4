@@ -114,7 +114,6 @@ router.get("/notifications/stats", getNotificationStats);
 router.patch("/notifications/:id/read", markNotificationAsRead);
 router.patch("/notifications/read-all", markAllNotificationsAsRead);
 router.delete("/notifications/:id", deleteNotification);
-router.post('/subscribe', authMiddleware, subscribePush);
 router.get("/comments/recent", authMiddleware, getRecentComments);
 
 

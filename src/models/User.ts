@@ -25,6 +25,13 @@ const UserSchema = new Schema<IUser>(
     department: { type: String },
     gender: { type: String, enum: ['male', 'female', 'non-binary', 'prefer-not-to-say'] },
     profilePicture: { type: String },
+  subscriptions: [{
+    endpoint: { type: String, required: true },
+    keys: {
+      p256dh: { type: String, required: true },
+      auth: { type: String, required: true }
+    }
+  }],
   },
   { timestamps: true }
 );
