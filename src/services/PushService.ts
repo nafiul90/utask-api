@@ -1,11 +1,15 @@
 import webpush from "web-push";
 import PushSubscription from "../models/PushSubscription";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 webpush.setVapidDetails(
   process.env.VAPID_EMAIL!,
   process.env.VAPID_PUBLIC_KEY!,
   process.env.VAPID_PRIVATE_KEY!,
 );
+console.log("email here -> ", process.env.VAPID_EMAIL);
 
 export class PushService {
   static async sendPush(userId: string, payload: any) {
