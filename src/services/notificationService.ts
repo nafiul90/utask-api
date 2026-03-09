@@ -1,18 +1,19 @@
-import Notification from '../models/Notification';
-import { User } from '../models/User';
+import Notification from "../models/Notification";
+import { User } from "../models/User";
+import { PushService } from "./PushService";
 
 export interface NotificationData {
   userId: string;
   title: string;
   message: string;
-  type: 'task_assigned' | 'comment_added' | 'status_changed' | 'general';
+  type: "task_assigned" | "comment_added" | "status_changed" | "general";
   relatedTaskId?: string;
   relatedCommentId?: string;
 }
 
 export class NotificationService {
   /**
-   * Create a notification in the database
+   * Create notification + send push
    */
   static async createNotification(data: NotificationData) {
     try {
@@ -23,103 +24,143 @@ export class NotificationService {
         type: data.type,
         relatedTaskId: data.relatedTaskId,
         relatedCommentId: data.relatedCommentId,
-        read: false
+        read: false,
+      });
+
+      // Send push notification
+      await PushService.sendPush(data.userId, {
+        title: data.title,
+        message: data.message,
+        type: data.type,
+        taskId: data.relatedTaskId,
       });
 
       return notification;
     } catch (error) {
-      console.error('Failed to create notification:', error);
+      console.error("Failed to create notification:", error);
       throw error;
     }
   }
 
   /**
-   * Create notifications for all admins and managers
+   * Notify admins and managers
    */
-  static async createNotificationsForAdminsAndManagers(title: string, message: string, type: NotificationData['type'], relatedTaskId?: string) {
+  static async createNotificationsForAdminsAndManagers(
+    title: string,
+    message: string,
+    type: NotificationData["type"],
+    relatedTaskId?: string,
+  ) {
     try {
       const adminsAndManagers = await User.find({
-        role: { $in: ['admin', 'manager'] }
+        role: { $in: ["admin", "manager"] },
       });
 
       const notifications = [];
+
       for (const user of adminsAndManagers) {
         const notification = await this.createNotification({
           userId: user._id.toString(),
           title,
           message,
           type,
-          relatedTaskId
+          relatedTaskId,
         });
+
         notifications.push(notification);
       }
 
       return notifications;
     } catch (error) {
-      console.error('Failed to create notifications for admins/managers:', error);
+      console.error(
+        "Failed to create notifications for admins/managers:",
+        error,
+      );
       throw error;
     }
   }
 
   /**
-   * Notify task assignee
+   * Task Assigned
    */
-  static async notifyTaskAssignee(assigneeId: string, taskId: string, title: string, message: string) {
+  static async notifyTaskAssignee(
+    assigneeId: string,
+    taskId: string,
+    title: string,
+    message: string,
+  ) {
     return this.createNotification({
       userId: assigneeId,
       title,
       message,
-      type: 'task_assigned',
-      relatedTaskId: taskId
+      type: "task_assigned",
+      relatedTaskId: taskId,
     });
   }
 
   /**
-   * Notify task assignee about new comment
+   * Comment on task
    */
-  static async notifyCommentToAssignee(assigneeId: string, taskId: string, taskTitle: string, message: string) {
+  static async notifyCommentToAssignee(
+    assigneeId: string,
+    taskId: string,
+    taskTitle: string,
+    message: string,
+  ) {
     return this.createNotification({
       userId: assigneeId,
-      title: 'New Comment on Your Task',
+      title: "New Comment on Your Task",
       message,
-      type: 'comment_added',
-      relatedTaskId: taskId
+      type: "comment_added",
+      relatedTaskId: taskId,
     });
   }
 
   /**
-   * Notify admins and managers about status change
+   * Status change
    */
-  static async notifyStatusChangeToAdmins(taskId: string, taskTitle: string, message: string) {
+  static async notifyStatusChangeToAdmins(
+    taskId: string,
+    taskTitle: string,
+    message: string,
+  ) {
     return this.createNotificationsForAdminsAndManagers(
-      'Task Status Changed',
+      "Task Status Changed",
       message,
-      'status_changed',
-      taskId
+      "status_changed",
+      taskId,
     );
   }
 
   /**
-   * Notify admins and managers about new comment
+   * New comment
    */
-  static async notifyNewCommentToAdmins(taskId: string, taskTitle: string, message: string) {
+  static async notifyNewCommentToAdmins(
+    taskId: string,
+    taskTitle: string,
+    message: string,
+  ) {
     return this.createNotificationsForAdminsAndManagers(
-      'New Comment Added',
+      "New Comment Added",
       message,
-      'comment_added',
-      taskId
+      "comment_added",
+      taskId,
     );
   }
 
   /**
-   * Notify admins and managers about new task
+   * New task
    */
-  static async notifyNewTaskToAdmins(taskId: string, taskTitle: string, message: string) {
+  static async notifyNewTaskToAdmins(
+    taskId: string,
+    taskTitle: string,
+    message: string,
+  ) {
     return this.createNotificationsForAdminsAndManagers(
-      'New Task Created',
+      "New Task Created",
       message,
-      'task_assigned',
-      taskId
+      "task_assigned",
+      taskId,
     );
   }
 }

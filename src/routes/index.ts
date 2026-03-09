@@ -1,5 +1,5 @@
-import { Router } from 'express';
-import { body } from 'express-validator';
+import { Router } from "express";
+import { body } from "express-validator";
 import {
   signup,
   login,
@@ -8,11 +8,14 @@ import {
   getUser,
   updateUser,
   deleteUser,
-  subscribePush
-} from '../controllers/userController';
-import { authMiddleware, requireRoles } from '../middleware/authMiddleware';
-import { upload } from '../middleware/upload';
-import { uploadProfileImage, uploadTaskAttachment } from '../controllers/uploadController';
+  subscribePush,
+} from "../controllers/userController";
+import { authMiddleware, requireRoles } from "../middleware/authMiddleware";
+import { upload } from "../middleware/upload";
+import {
+  uploadProfileImage,
+  uploadTaskAttachment,
+} from "../controllers/uploadController";
 import {
   createTask,
   deleteTask,
@@ -28,86 +31,94 @@ import {
   deleteReply,
   getTaskStats,
   reorderTasks,
-} from '../controllers/taskController';
+} from "../controllers/taskController";
 import {
   getUserNotifications,
   markNotificationAsRead,
   markAllNotificationsAsRead,
   deleteNotification,
-  getNotificationStats
+  getNotificationStats,
+  saveSubscription,
 } from "../controllers/notificationController";
 import { getRecentComments } from "../controllers/commentController";
 
 const router = Router();
 
 const signupValidator = [
-  body('fullName').isString().notEmpty(),
-  body('email').isEmail().normalizeEmail(),
-  body('password').isLength({ min: 6 }),
-  body('role').optional().isIn(['admin', 'manager', 'employee'])
+  body("fullName").isString().notEmpty(),
+  body("email").isEmail().normalizeEmail(),
+  body("password").isLength({ min: 6 }),
+  body("role").optional().isIn(["admin", "manager", "employee"]),
 ];
 
 const loginValidator = [
-  body('email').isEmail().normalizeEmail(),
-  body('password').notEmpty()
+  body("email").isEmail().normalizeEmail(),
+  body("password").notEmpty(),
 ];
 
 const userMutationValidator = [
-  body('fullName').optional().isString(),
-  body('email').optional().isEmail().normalizeEmail(),
-  body('password').optional().isLength({ min: 6 }),
-  body('role').optional().isIn(['admin', 'manager', 'employee'])
+  body("fullName").optional().isString(),
+  body("email").optional().isEmail().normalizeEmail(),
+  body("password").optional().isLength({ min: 6 }),
+  body("role").optional().isIn(["admin", "manager", "employee"]),
 ];
 
 const taskCreateValidator = [
-  body('title').isString().notEmpty(),
-  body('assignee').optional().isMongoId(),
-  body('startDate').optional().isISO8601(),
-  body('dueDate').optional().isISO8601(),
-  body('attachments').optional().isArray()
+  body("title").isString().notEmpty(),
+  body("assignee").optional().isMongoId(),
+  body("startDate").optional().isISO8601(),
+  body("dueDate").optional().isISO8601(),
+  body("attachments").optional().isArray(),
 ];
 
 const taskUpdateValidator = [
-  body('title').optional().isString(),
-  body('assignee').optional().isMongoId(),
-  body('startDate').optional().isISO8601(),
-  body('dueDate').optional().isISO8601(),
-  body('attachments').optional().isArray()
+  body("title").optional().isString(),
+  body("assignee").optional().isMongoId(),
+  body("startDate").optional().isISO8601(),
+  body("dueDate").optional().isISO8601(),
+  body("attachments").optional().isArray(),
 ];
 
-const statusValidator = [body('status').isIn(['pending', 'processing', 'qa', 'completed', 'canceled'])];
+const statusValidator = [
+  body("status").isIn(["pending", "processing", "qa", "completed", "canceled"]),
+];
 
-router.post('/auth/signup', signupValidator, signup);
-router.post('/auth/login', loginValidator, login);
+router.post("/auth/signup", signupValidator, signup);
+router.post("/auth/login", loginValidator, login);
 
 router.use(authMiddleware);
-router.post('/uploads/profile', upload.single('file'), uploadProfileImage);
-router.post('/uploads/file', upload.single('file'), uploadTaskAttachment);
+router.post("/uploads/profile", upload.single("file"), uploadProfileImage);
+router.post("/uploads/file", upload.single("file"), uploadTaskAttachment);
 
-router.get('/users', listUsers);
-router.post('/users', requireRoles('admin', 'manager'), signupValidator, createUser);
-router.get('/users/:id', getUser);
-router.put('/users/:id', userMutationValidator, updateUser);
-router.delete('/users/:id', requireRoles('admin'), deleteUser);
+router.get("/users", listUsers);
+router.post(
+  "/users",
+  requireRoles("admin", "manager"),
+  signupValidator,
+  createUser,
+);
+router.get("/users/:id", getUser);
+router.put("/users/:id", userMutationValidator, updateUser);
+router.delete("/users/:id", requireRoles("admin"), deleteUser);
 
-router.get('/tasks', listTasks);
-router.post('/tasks', taskCreateValidator, createTask);
-router.get('/tasks/:id', getTask);
-router.put('/tasks/:id', taskUpdateValidator, updateTask);
-router.patch('/tasks/:id/status', statusValidator, updateTaskStatus);
-router.patch('/tasks/reorder', reorderTasks); // Added this line back
-router.delete('/tasks/:id', deleteTask);
-router.get('/task-stats', getTaskStats);
+router.get("/tasks", listTasks);
+router.post("/tasks", taskCreateValidator, createTask);
+router.get("/tasks/:id", getTask);
+router.put("/tasks/:id", taskUpdateValidator, updateTask);
+router.patch("/tasks/:id/status", statusValidator, updateTaskStatus);
+router.patch("/tasks/reorder", reorderTasks); // Added this line back
+router.delete("/tasks/:id", deleteTask);
+router.get("/task-stats", getTaskStats);
 
 // Comments
-router.post('/tasks/:id/comments', addComment);
-router.put('/tasks/:id/comments/:commentId', updateComment);
-router.delete('/tasks/:id/comments/:commentId', deleteComment);
+router.post("/tasks/:id/comments", addComment);
+router.put("/tasks/:id/comments/:commentId", updateComment);
+router.delete("/tasks/:id/comments/:commentId", deleteComment);
 
 // Replies
-router.post('/tasks/:id/comments/:commentId/replies', replyToComment);
-router.put('/tasks/:id/comments/:commentId/replies/:replyId', updateReply);
-router.delete('/tasks/:id/comments/:commentId/replies/:replyId', deleteReply);
+router.post("/tasks/:id/comments/:commentId/replies", replyToComment);
+router.put("/tasks/:id/comments/:commentId/replies/:replyId", updateReply);
+router.delete("/tasks/:id/comments/:commentId/replies/:replyId", deleteReply);
 
 // Notifications
 router.get("/notifications", getUserNotifications);
@@ -115,8 +126,7 @@ router.get("/notifications/stats", getNotificationStats);
 router.patch("/notifications/:id/read", markNotificationAsRead);
 router.patch("/notifications/read-all", markAllNotificationsAsRead);
 router.delete("/notifications/:id", deleteNotification);
-router.post('/subscribe', authMiddleware, subscribePush);
+router.post("/notifications/subscribe", authMiddleware, saveSubscription);
 router.get("/comments/recent", authMiddleware, getRecentComments);
-
 
 export default router;
