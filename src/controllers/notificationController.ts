@@ -156,11 +156,19 @@ export const saveSubscription = async (req: AuthRequest, res: Response) => {
   try {
     const { subscription } = req.body;
 
-    await PushSubscription.create({
-      userId: req.user!.id,
-      endpoint: subscription.endpoint,
-      keys: subscription.keys,
-    });
+    // await PushSubscription.create({
+    //   userId: req.user!.id,
+    //   endpoint: subscription.endpoint,
+    //   keys: subscription.keys,
+    // });
+    await PushSubscription.findOneAndUpdate(
+      { endpoint: subscription.endpoint },
+      {
+        userId: req.user!.id,
+        keys: subscription.keys,
+      },
+      { upsert: true },
+    );
 
     res.json({ success: true });
   } catch (error) {

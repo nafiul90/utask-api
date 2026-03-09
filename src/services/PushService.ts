@@ -9,13 +9,17 @@ webpush.setVapidDetails(
   process.env.VAPID_PUBLIC_KEY!,
   process.env.VAPID_PRIVATE_KEY!,
 );
-console.log("email here -> ", process.env.VAPID_EMAIL);
 
 export class PushService {
   static async sendPush(userId: string, payload: any) {
     try {
       const subscriptions = await PushSubscription.find({ userId });
+      console.log("subscription: ", subscriptions);
+      console.log("payload: ", payload);
 
+      if (subscriptions.length == 0) {
+        return;
+      }
       for (const sub of subscriptions) {
         // Validate subscription keys
         if (!sub.endpoint || !sub.keys?.p256dh || !sub.keys?.auth) {
@@ -32,10 +36,11 @@ export class PushService {
         };
 
         try {
-          await webpush.sendNotification(
+          const result = await webpush.sendNotification(
             pushSubscription,
             JSON.stringify(payload),
           );
+          console.log("n send result: ", result);
         } catch (error) {
           console.error("Push send error:", error);
         }

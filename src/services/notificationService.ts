@@ -55,6 +55,7 @@ export class NotificationService {
       const adminsAndManagers = await User.find({
         role: { $in: ["admin", "manager"] },
       });
+      console.log("admin and managers", adminsAndManagers);
 
       const notifications = [];
 
