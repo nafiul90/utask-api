@@ -1,7 +1,7 @@
-import { Schema, model, Document } from 'mongoose';
+import { Schema, model, Document } from "mongoose";
 
-export type UserRole = 'admin' | 'manager' | 'employee';
-export type Gender = 'male' | 'female' | 'non-binary' | 'prefer-not-to-say';
+export type UserRole = "admin" | "manager" | "employee";
+export type Gender = "male" | "female" | "non-binary" | "prefer-not-to-say";
 
 export interface IUser extends Document {
   fullName: string;
@@ -13,27 +13,43 @@ export interface IUser extends Document {
   gender?: Gender;
   profilePicture?: string;
   fcmToken?: string;
+  subscriptions?: any;
 }
 
 const UserSchema = new Schema<IUser>(
   {
     fullName: { type: String, required: true, trim: true },
-    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
     passwordHash: { type: String, required: true },
-    role: { type: String, enum: ['admin', 'manager', 'employee'], default: 'employee' },
+    role: {
+      type: String,
+      enum: ["admin", "manager", "employee"],
+      default: "employee",
+    },
     jobTitle: { type: String },
     department: { type: String },
-    gender: { type: String, enum: ['male', 'female', 'non-binary', 'prefer-not-to-say'] },
+    gender: {
+      type: String,
+      enum: ["male", "female", "non-binary", "prefer-not-to-say"],
+    },
     profilePicture: { type: String },
-  subscriptions: [{
-    endpoint: { type: String, required: true },
-    keys: {
-      p256dh: { type: String, required: true },
-      auth: { type: String, required: true }
-    }
-  }],
+    subscriptions: [
+      {
+        endpoint: { type: String, required: true },
+        keys: {
+          p256dh: { type: String, required: true },
+          auth: { type: String, required: true },
+        },
+      },
+    ],
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
-export const User = model<IUser>('User', UserSchema);
+export const User = model<IUser>("User", UserSchema);

@@ -1,9 +1,9 @@
-import { Request, Response } from 'express';
-import { validationResult } from 'express-validator';
-import bcrypt from 'bcryptjs';
-import { User } from '../models/User';
-import { generateToken } from '../utils/token';
-import { AuthRequest } from '../middleware/authMiddleware';
+import { Request, Response } from "express";
+import { validationResult } from "express-validator";
+import bcrypt from "bcryptjs";
+import { User } from "../models/User";
+import { generateToken } from "../utils/token";
+import { AuthRequest } from "../middleware/authMiddleware";
 
 export const signup = async (req: Request, res: Response) => {
   const errors = validationResult(req);
@@ -11,20 +11,38 @@ export const signup = async (req: Request, res: Response) => {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { fullName, email, password, role, jobTitle, department, gender, profilePicture } = req.body;
+  const {
+    fullName,
+    email,
+    password,
+    role,
+    jobTitle,
+    department,
+    gender,
+    profilePicture,
+  } = req.body;
 
   const existing = await User.findOne({ email });
   if (existing) {
-    return res.status(409).json({ message: 'Email already registered' });
+    return res.status(409).json({ message: "Email already registered" });
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  const user = await User.create({ fullName, email, passwordHash, role, jobTitle, department, gender, profilePicture });
+  const user = await User.create({
+    fullName,
+    email,
+    passwordHash,
+    role,
+    jobTitle,
+    department,
+    gender,
+    profilePicture,
+  });
 
   const token = generateToken(user);
   return res.status(201).json({
     token,
-    user: sanitizeUser(user)
+    user: sanitizeUser(user),
   });
 };
 
@@ -37,12 +55,12 @@ export const login = async (req: Request, res: Response) => {
   const { email, password } = req.body;
   const user = await User.findOne({ email });
   if (!user) {
-    return res.status(401).json({ message: 'Invalid credentials' });
+    return res.status(401).json({ message: "Invalid credentials" });
   }
 
   const match = await bcrypt.compare(password, user.passwordHash);
   if (!match) {
-    return res.status(401).json({ message: 'Invalid credentials' });
+    return res.status(401).json({ message: "Invalid credentials" });
   }
 
   const token = generateToken(user);
@@ -55,14 +73,32 @@ export const createUser = async (req: Request, res: Response) => {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { fullName, email, password, role, jobTitle, department, gender, profilePicture } = req.body;
+  const {
+    fullName,
+    email,
+    password,
+    role,
+    jobTitle,
+    department,
+    gender,
+    profilePicture,
+  } = req.body;
   const exists = await User.findOne({ email });
   if (exists) {
-    return res.status(409).json({ message: 'Email already registered' });
+    return res.status(409).json({ message: "Email already registered" });
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  const user = await User.create({ fullName, email, passwordHash, role, jobTitle, department, gender, profilePicture });
+  const user = await User.create({
+    fullName,
+    email,
+    passwordHash,
+    role,
+    jobTitle,
+    department,
+    gender,
+    profilePicture,
+  });
   return res.status(201).json(sanitizeUser(user));
 };
 
@@ -74,7 +110,7 @@ export const listUsers = async (_req: AuthRequest, res: Response) => {
 export const getUser = async (req: Request, res: Response) => {
   const user = await User.findById(req.params.id);
   if (!user) {
-    return res.status(404).json({ message: 'User not found' });
+    return res.status(404).json({ message: "User not found" });
   }
   res.json(sanitizeUser(user));
 };
@@ -82,13 +118,13 @@ export const getUser = async (req: Request, res: Response) => {
 export const updateUser = async (req: AuthRequest, res: Response) => {
   const requester = req.user;
   if (!requester) {
-    return res.status(401).json({ message: 'Unauthorized' });
+    return res.status(401).json({ message: "Unauthorized" });
   }
 
   const isSelf = requester.id === req.params.id;
-  const isManager = requester.role === 'admin' || requester.role === 'manager';
+  const isManager = requester.role === "admin" || requester.role === "manager";
   if (!isSelf && !isManager) {
-    return res.status(403).json({ message: 'Forbidden' });
+    return res.status(403).json({ message: "Forbidden" });
   }
 
   const updates = { ...req.body };
@@ -97,9 +133,11 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
     delete updates.password;
   }
 
-  const user = await User.findByIdAndUpdate(req.params.id, updates, { new: true });
+  const user = await User.findByIdAndUpdate(req.params.id, updates, {
+    new: true,
+  });
   if (!user) {
-    return res.status(404).json({ message: 'User not found' });
+    return res.status(404).json({ message: "User not found" });
   }
   res.json(sanitizeUser(user));
 };
@@ -107,7 +145,7 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
 export const deleteUser = async (req: Request, res: Response) => {
   const user = await User.findByIdAndDelete(req.params.id);
   if (!user) {
-    return res.status(404).json({ message: 'User not found' });
+    return res.status(404).json({ message: "User not found" });
   }
   res.status(204).send();
 };
@@ -115,12 +153,12 @@ export const deleteUser = async (req: Request, res: Response) => {
 export const subscribePush = async (req: AuthRequest, res: Response) => {
   const subscription = req.body.subscription;
   if (!subscription || !subscription.endpoint) {
-    return res.status(400).json({ message: 'Invalid subscription' });
+    return res.status(400).json({ message: "Invalid subscription" });
   }
-  await User.findByIdAndUpdate(req.user.id, {
-    $set: { subscriptions: [subscription] }
+  await User.findByIdAndUpdate(req.user!.id, {
+    $set: { subscriptions: [subscription] },
   });
-  res.json({ message: 'Subscription saved' });
+  res.json({ message: "Subscription saved" });
 };
 
 const sanitizeUser = (user: any) => ({
@@ -133,5 +171,5 @@ const sanitizeUser = (user: any) => ({
   gender: user.gender,
   profilePicture: user.profilePicture,
   createdAt: user.createdAt,
-  updatedAt: user.updatedAt
+  updatedAt: user.updatedAt,
 });
