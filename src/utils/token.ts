@@ -1,18 +1,19 @@
-import jwt, { SignOptions, Secret } from 'jsonwebtoken';
-import { IUser } from '../models/User';
+import jwt, { SignOptions, Secret } from "jsonwebtoken";
+import { IUser } from "../models/User";
 
-const JWT_SECRET: Secret = process.env.JWT_SECRET || 'utask-secret';
-const JWT_EXPIRES_IN = (process.env.JWT_EXPIRES_IN ?? '12h') as SignOptions['expiresIn'];
+const JWT_SECRET: Secret = process.env.JWT_SECRET || "utask-secret";
+const JWT_EXPIRES_IN = (process.env.JWT_EXPIRES_IN ??
+  "12h") as SignOptions["expiresIn"];
 
 export function generateToken(user: IUser) {
   return jwt.sign(
     {
       sub: user._id.toString(),
       email: user.email,
-      role: user.role
+      role: user.role,
     },
     JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN }
+    // { expiresIn: JWT_EXPIRES_IN }
   );
 }
 
