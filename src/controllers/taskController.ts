@@ -10,7 +10,7 @@ import {
   ILink,
 } from "../models/Task";
 import { AuthRequest } from "../middleware/authMiddleware";
-import { Types } from "mongoose";
+import mongoose, { Types } from "mongoose";
 
 const managerRoles = ["admin", "manager"];
 const allowedTransitions: Record<TaskStatus, TaskStatus[]> = {
@@ -382,7 +382,9 @@ export const addComment = async (req: AuthRequest, res: Response) => {
   const task = await Task.findById(req.params.id);
   if (!task) return res.status(404).json({ message: "Task not found" });
 
+  const commentId = new mongoose.Types.ObjectId();
   task.comments.push({
+    _id: commentId,
     author: req.user!.id as any,
     content,
     createdAt: new Date(),
@@ -395,7 +397,7 @@ export const addComment = async (req: AuthRequest, res: Response) => {
     await NotificationService.notifyCommentToAssignee(
       task.assignee.toString(),
       req.params.id as string,
-      task.title,
+      commentId,
       `New comment on "${task.title}"`,
     );
   }
@@ -403,7 +405,7 @@ export const addComment = async (req: AuthRequest, res: Response) => {
   // Notify admins
   await NotificationService.notifyNewCommentToAdmins(
     req.params.id as string,
-    task.title,
+    commentId,
     `New comment on "${task.title}"`,
   );
   const populated = await populateTaskComments(task);
@@ -426,6 +428,22 @@ export const updateComment = async (req: AuthRequest, res: Response) => {
 
   comment.content = content;
   await task.save();
+  // Notify assignee if not author
+  if (task.assignee && task.assignee.toString() !== req.user!.id) {
+    await NotificationService.notifyCommentUpdateToAssignee(
+      task.assignee.toString(),
+      req.params.id as string,
+      comment._id,
+      `Comment updated on "${task.title}"`,
+    );
+  }
+
+  // Notify admins
+  await NotificationService.notifyCommentUpdateToAdmins(
+    req.params.id as string,
+    comment._id,
+    `Comment updated on "${task.title}"`,
+  );
   const populated = await populateTaskComments(task);
   res.json(populated);
 };
@@ -459,13 +477,31 @@ export const replyToComment = async (req: AuthRequest, res: Response) => {
   const comment = (task.comments as any).id(req.params.commentId);
   if (!comment) return res.status(404).json({ message: "Comment not found" });
 
+  const repplyId = new mongoose.Types.ObjectId();
   comment.replies.push({
+    _id: repplyId,
     author: req.user!.id as any,
     content,
     createdAt: new Date(),
   });
 
   await task.save();
+  // Notify assignee if not author
+  if (task.assignee && task.assignee.toString() !== req.user!.id) {
+    await NotificationService.notifyRepplyToAssignee(
+      task.assignee.toString(),
+      req.params.id as string,
+      repplyId,
+      `Reply on a comment "${content}"`,
+    );
+  }
+
+  // Notify admins
+  await NotificationService.notifyNewRepplyToAdmins(
+    req.params.id as string,
+    repplyId,
+    `Reply on a comment "${content}"`,
+  );
   const populated = await populateTaskComments(task);
   res.json(populated);
 };
@@ -489,6 +525,21 @@ export const updateReply = async (req: AuthRequest, res: Response) => {
 
   reply.content = content;
   await task.save();
+  if (task.assignee && task.assignee.toString() !== req.user!.id) {
+    await NotificationService.notifyRepplyUpdateToAssignee(
+      task.assignee.toString(),
+      req.params.id as string,
+      reply._id,
+      `Reply updated "${content}"`,
+    );
+  }
+
+  // Notify admins
+  await NotificationService.notifyNewRepplyUpdateToAdmins(
+    req.params.id as string,
+    task.title,
+    `Reply updated "${content}"`,
+  );
   const populated = await populateTaskComments(task);
   res.json(populated);
 };

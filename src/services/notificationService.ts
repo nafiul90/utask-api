@@ -6,9 +6,17 @@ export interface NotificationData {
   userId: string;
   title: string;
   message: string;
-  type: "task_assigned" | "comment_added" | "status_changed" | "general";
+  type:
+    | "task_assigned"
+    | "comment_added"
+    | "status_changed"
+    | "general"
+    | "comment_updated"
+    | "repply_added"
+    | "repply_updated";
   relatedTaskId?: string;
   relatedCommentId?: string;
+  commentId?: any;
 }
 
 export class NotificationService {
@@ -25,6 +33,7 @@ export class NotificationService {
         relatedTaskId: data.relatedTaskId,
         relatedCommentId: data.relatedCommentId,
         read: false,
+        commentId: data.commentId,
       });
 
       // Send push notification
@@ -33,6 +42,7 @@ export class NotificationService {
         message: data.message,
         type: data.type,
         taskId: data.relatedTaskId,
+        commentId: data.commentId,
       });
 
       return notification;
@@ -50,6 +60,7 @@ export class NotificationService {
     message: string,
     type: NotificationData["type"],
     relatedTaskId?: string,
+    commentId?: any,
   ) {
     try {
       const adminsAndManagers = await User.find({
@@ -66,6 +77,7 @@ export class NotificationService {
           message,
           type,
           relatedTaskId,
+          commentId,
         });
 
         notifications.push(notification);
@@ -105,7 +117,7 @@ export class NotificationService {
   static async notifyCommentToAssignee(
     assigneeId: string,
     taskId: string,
-    taskTitle: string,
+    commentId: any,
     message: string,
   ) {
     return this.createNotification({
@@ -114,6 +126,55 @@ export class NotificationService {
       message,
       type: "comment_added",
       relatedTaskId: taskId,
+      commentId,
+    });
+  }
+
+  static async notifyCommentUpdateToAssignee(
+    assigneeId: string,
+    taskId: string,
+    commentId: any,
+    message: string,
+  ) {
+    return this.createNotification({
+      userId: assigneeId,
+      title: "A Comment updated on Your Task",
+      message,
+      type: "comment_updated",
+      relatedTaskId: taskId,
+      commentId,
+    });
+  }
+
+  static async notifyRepplyToAssignee(
+    assigneeId: string,
+    taskId: string,
+    commentId: any,
+    message: string,
+  ) {
+    return this.createNotification({
+      userId: assigneeId,
+      title: "Someone repplied to a comment",
+      message,
+      type: "repply_added",
+      relatedTaskId: taskId,
+      commentId,
+    });
+  }
+
+  static async notifyRepplyUpdateToAssignee(
+    assigneeId: string,
+    taskId: string,
+    commentId: any,
+    message: string,
+  ) {
+    return this.createNotification({
+      userId: assigneeId,
+      title: "Repply updated",
+      message,
+      type: "repply_updated",
+      relatedTaskId: taskId,
+      commentId,
     });
   }
 
@@ -138,7 +199,7 @@ export class NotificationService {
    */
   static async notifyNewCommentToAdmins(
     taskId: string,
-    taskTitle: string,
+    commentId: any,
     message: string,
   ) {
     return this.createNotificationsForAdminsAndManagers(
@@ -146,6 +207,46 @@ export class NotificationService {
       message,
       "comment_added",
       taskId,
+      commentId,
+    );
+  }
+  static async notifyCommentUpdateToAdmins(
+    taskId: string,
+    commentId: any,
+    message: string,
+  ) {
+    return this.createNotificationsForAdminsAndManagers(
+      "Comment Updated",
+      message,
+      "comment_updated",
+      taskId,
+      commentId,
+    );
+  }
+  static async notifyNewRepplyToAdmins(
+    taskId: string,
+    commentId: any,
+    message: string,
+  ) {
+    return this.createNotificationsForAdminsAndManagers(
+      "Repply Added",
+      message,
+      "repply_added",
+      taskId,
+      commentId,
+    );
+  }
+  static async notifyNewRepplyUpdateToAdmins(
+    taskId: string,
+    commentId: any,
+    message: string,
+  ) {
+    return this.createNotificationsForAdminsAndManagers(
+      "Repply Updated",
+      message,
+      "repply_updated",
+      taskId,
+      commentId,
     );
   }
 
