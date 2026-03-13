@@ -31,6 +31,7 @@ import {
   deleteReply,
   getTaskStats,
   reorderTasks,
+  updateTaskLink,
 } from "../controllers/taskController";
 import {
   getUserNotifications,
@@ -79,6 +80,11 @@ const taskUpdateValidator = [
   body("attachments").optional().isArray(),
 ];
 
+const taskLinkValidator = [
+  body("title").optional().isString(),
+  body("url").optional().isString(),
+];
+
 const statusValidator = [
   body("status").isIn(["pending", "processing", "qa", "completed", "canceled"]),
 ];
@@ -105,6 +111,7 @@ router.get("/tasks", listTasks);
 router.post("/tasks", taskCreateValidator, createTask);
 router.get("/tasks/:id", getTask);
 router.put("/tasks/:id", taskUpdateValidator, updateTask);
+router.put("/tasks-link/:id", taskLinkValidator, updateTaskLink);
 router.patch("/tasks/:id/status", statusValidator, updateTaskStatus);
 router.patch("/tasks/reorder", reorderTasks); // Added this line back
 router.delete("/tasks/:id", deleteTask);

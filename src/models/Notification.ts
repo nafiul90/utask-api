@@ -28,6 +28,7 @@ const NotificationSchema: Schema = new Schema({
       "comment_updated",
       "repply_added",
       "repply_updated",
+      "link_added",
     ],
   },
   relatedTaskId: { type: Schema.Types.ObjectId, ref: "Task" },

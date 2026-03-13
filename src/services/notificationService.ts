@@ -13,6 +13,7 @@ export interface NotificationData {
     | "general"
     | "comment_updated"
     | "repply_added"
+    | "link_added"
     | "repply_updated";
   relatedTaskId?: string;
   relatedCommentId?: string;
@@ -262,6 +263,19 @@ export class NotificationService {
       "New Task Created",
       message,
       "task_assigned",
+      taskId,
+    );
+  }
+
+  static async notifyLinkAddedToAdmins(
+    taskId: string,
+    title: string,
+    message: string,
+  ) {
+    return this.createNotificationsForAdminsAndManagers(
+      title,
+      message,
+      "link_added",
       taskId,
     );
   }

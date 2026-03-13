@@ -303,6 +303,35 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
   res.json(task);
 };
 
+export const updateTaskLink = async (req: AuthRequest, res: Response) => {
+  const oldTask = await Task.findById(req.params.id);
+  if (!oldTask) {
+    return res.status(404).json({ message: "Task not found" });
+  }
+  const link = req.body;
+
+  const updates = {
+    links: [...oldTask.links, req.body],
+  };
+
+  const task = await Task.findByIdAndUpdate(req.params.id, updates, {
+    new: true,
+  })
+    .populate("assignee", "fullName email role")
+    .populate("createdBy", "fullName email role");
+  if (!task) {
+    return res.status(404).json({ message: "Task not found" });
+  }
+
+  await NotificationService.notifyLinkAddedToAdmins(
+    task._id.toString(),
+    link.title,
+    `Link added "${link.title}". Task: "${task.title}"`,
+  );
+
+  res.json(task);
+};
+
 export const updateTaskStatus = async (req: Request, res: Response) => {
   try {
     const { status } = req.body;
