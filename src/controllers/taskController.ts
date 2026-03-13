@@ -277,6 +277,19 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
       task.title,
       `Assigned to task: "${task.title}"`,
     );
+    await NotificationService.notifyTaskAssignee(
+      oldTask.assignee!.toString(),
+      req.params.id as string,
+      task.title,
+      `Assignee changed: "${task.title}"`,
+    );
+  } else {
+    await NotificationService.notifyTaskAssignee(
+      updates.assignee,
+      req.params.id as string,
+      task.title,
+      `See the change on task: "${task.title}"`,
+    );
   }
 
   // Notify status change
