@@ -80,10 +80,7 @@ const taskUpdateValidator = [
   body("attachments").optional().isArray(),
 ];
 
-const taskLinkValidator = [
-  body("title").optional().isString(),
-  body("url").optional().isString(),
-];
+const taskLinkValidator = [body("title").isString(), body("url").isString()];
 
 const statusValidator = [
   body("status").isIn(["pending", "processing", "qa", "completed", "canceled"]),
