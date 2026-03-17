@@ -1,6 +1,11 @@
-import { Schema, model, Document, Types } from 'mongoose';
+import { Schema, model, Document, Types } from "mongoose";
 
-export type TaskStatus = 'pending' | 'processing' | 'qa' | 'completed' | 'canceled';
+export type TaskStatus =
+  | "pending"
+  | "processing"
+  | "qa"
+  | "completed"
+  | "canceled";
 
 export interface IAttachment {
   filename: string;
@@ -42,6 +47,7 @@ export interface ITask extends Document {
   links: ILink[];
   comments: IComment[];
   position: number; // Added for sorting within status columns
+  phoneToNotify: string;
 }
 
 const AttachmentSchema = new Schema<IAttachment>(
@@ -49,42 +55,40 @@ const AttachmentSchema = new Schema<IAttachment>(
     filename: String,
     path: { type: String, required: true },
     mimeType: String,
-    size: Number
+    size: Number,
   },
-  { _id: false }
+  { _id: false },
 );
 
-const LinkSchema = new Schema<ILink>(
-  {
-    title: { type: String, required: true },
-    url: { type: String, required: true }
-  }
-);
+const LinkSchema = new Schema<ILink>({
+  title: { type: String, required: true },
+  url: { type: String, required: true },
+});
 
-const ReplySchema = new Schema<IReply>(
-  {
-    author: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    content: { type: String, required: true },
-    createdAt: { type: Date, default: Date.now }
-  }
-);
+const ReplySchema = new Schema<IReply>({
+  author: { type: Schema.Types.ObjectId, ref: "User", required: true },
+  content: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+});
 
-const CommentSchema = new Schema<IComment>(
-  {
-    author: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    content: { type: String, required: true },
-    createdAt: { type: Date, default: Date.now },
-    replies: [ReplySchema]
-  }
-);
+const CommentSchema = new Schema<IComment>({
+  author: { type: Schema.Types.ObjectId, ref: "User", required: true },
+  content: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+  replies: [ReplySchema],
+});
 
 const TaskSchema = new Schema<ITask>(
   {
     title: { type: String, required: true, trim: true },
     description: { type: String },
-    status: { type: String, enum: ['pending', 'processing', 'qa', 'completed', 'canceled'], default: 'pending' },
-    assignee: { type: Schema.Types.ObjectId, ref: 'User' },
-    createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    status: {
+      type: String,
+      enum: ["pending", "processing", "qa", "completed", "canceled"],
+      default: "pending",
+    },
+    assignee: { type: Schema.Types.ObjectId, ref: "User" },
+    createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
     startDate: { type: Date, default: () => new Date() },
     dueDate: {
       type: Date,
@@ -93,14 +97,15 @@ const TaskSchema = new Schema<ITask>(
         date.setDate(date.getDate() + 1);
         date.setHours(23, 59, 59, 999);
         return date;
-      }
+      },
     },
     attachments: { type: [AttachmentSchema], default: [] },
     links: { type: [LinkSchema], default: [] },
     comments: { type: [CommentSchema], default: [] },
-    position: { type: Number, default: 0 } // Default position
+    position: { type: Number, default: 0 }, // Default position
+    phoneToNotify: { type: String },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
-export const Task = model<ITask>('Task', TaskSchema);
+export const Task = model<ITask>("Task", TaskSchema);

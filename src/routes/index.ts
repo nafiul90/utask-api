@@ -8,7 +8,6 @@ import {
   getUser,
   updateUser,
   deleteUser,
-  subscribePush,
 } from "../controllers/userController";
 import { authMiddleware, requireRoles } from "../middleware/authMiddleware";
 import { upload } from "../middleware/upload";

@@ -11,6 +11,8 @@ import {
 } from "../models/Task";
 import { AuthRequest } from "../middleware/authMiddleware";
 import mongoose, { Types } from "mongoose";
+import { WhatsappService } from "../services/whatsappService";
+import dayjs from "dayjs";
 
 const managerRoles = ["admin", "manager"];
 const allowedTransitions: Record<TaskStatus, TaskStatus[]> = {
@@ -212,6 +214,7 @@ export const createTask = async (req: AuthRequest, res: Response) => {
     links: req.body.links || [], // Add links to payload
     createdBy: requester.id,
     position: newPosition, // Assign initial position
+    phoneToNotify: req.body.phoneToNotify,
   };
 
   const task = await Task.create(payload);
@@ -233,6 +236,14 @@ export const createTask = async (req: AuthRequest, res: Response) => {
     title,
     `A new task "${title}" has been created`,
   );
+
+  task.phoneToNotify &&
+    (await WhatsappService.sendTaskUpdate(
+      task.phoneToNotify,
+      task.title,
+      task.status,
+      dayjs(task.dueDate).format("DD MMM YYYY"),
+    ));
 
   const populated = await task.populate([
     { path: "assignee", select: "fullName email role" },
@@ -328,7 +339,6 @@ export const updateTaskLink = async (req: AuthRequest, res: Response) => {
     link.title,
     `Link added "${link.title}". Task: "${task.title}"`,
   );
-
   res.json(task);
 };
 
@@ -357,6 +367,13 @@ export const updateTaskStatus = async (req: Request, res: Response) => {
         task.title,
         `Task "${task.title}" status changed from ${oldTask.status} to ${status}`,
       );
+      task.phoneToNotify &&
+        (await WhatsappService.sendTaskUpdate(
+          task.phoneToNotify,
+          task.title,
+          task.status,
+          dayjs(task.dueDate).format("DD MMM YYYY"),
+        ));
     }
 
     res.json(task);
